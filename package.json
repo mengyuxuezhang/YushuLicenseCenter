@@ -1,0 +1,27 @@
+{
+  "name": "yushu-license-center",
+  "version": "0.1.0",
+  "private": true,
+  "description": "羽枢独立授权中心：代理授权、套餐、部署绑定与运营账号管理",
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "start": "node cloud/license-center/server.mjs",
+    "migrate": "node cloud/license-center/server.mjs --migrate",
+    "init": "node scripts/authorization-init.mjs",
+    "check": "node scripts/check.mjs && npm test",
+    "test": "node --test src/services/authorization/*.test.mjs src/services/login-protection.test.mjs",
+    "web:install": "npm ci --prefix web-admin",
+    "web:typecheck": "npm run typecheck --prefix web-admin",
+    "web:test": "npm test --prefix web-admin",
+    "web:architecture": "node scripts/check-frontend.mjs",
+    "web:build": "npm exec --prefix web-admin -- vite build --config web-admin/vite.license.config.ts"
+  },
+  "dependencies": {
+    "express": "4.22.2",
+    "mysql2": "3.22.5"
+  }
+}

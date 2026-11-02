@@ -1,0 +1,22 @@
+name: 检查授权中心
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web-admin/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix web-admin
+      - run: npm run check
+      - run: npm run web:typecheck
+      - run: npm run web:test
+      - run: npm run web:architecture
+      - run: npm run web:build
+      - run: git diff --exit-code -- web/license-center

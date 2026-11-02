@@ -1,0 +1,23 @@
+{
+  "name": "yushu-license-center-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "dev": "vite --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@lucide/vue": "1.31.0",
+    "vue": "3.5.41"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.8",
+    "happy-dom": "20.11.2",
+    "typescript": "5.9.3",
+    "vite": "8.2.1",
+    "vitest": "4.1.10",
+    "vue-tsc": "3.3.9"
+  }
+}

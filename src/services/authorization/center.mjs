@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { createPackage, updatePackage, deletePackage, latestPackage, currentPackages } from './package-management.mjs'
 import { presentAudit } from './audit-presentation.mjs'
-import { parseSupplierExpiresAt } from '../supplier-license-contract.mjs'
+import { parseSupplierExpiresAt } from './expiry.mjs'
 import { CAPABILITY_GROUPS, DEFAULT_PACKAGES } from './packages.mjs'
 import { HOUR, digest, domain, equal, failure, identifier, secret, signClaims, verifyClaims } from './protocol.mjs'
 

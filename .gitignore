@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+data/
+logs/
+coverage/
+*.log
+*.zip
+*.pem
+*.key
+operators.json
+key-id.txt
