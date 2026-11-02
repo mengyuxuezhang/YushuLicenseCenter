@@ -24,6 +24,7 @@ export function registerLicenseCenterRoutes(app, { center, operators }) {
   app.post(`${base}/operator/grants/:id/migration/complete`, endpoint(req => center.completeMigration(req.params.id, req.body, req.operator)))
   app.post(`${base}/operator/reminders`, endpoint(() => center.reminders()))
   app.post(`${base}/activate`, endpoint(req => center.activate(req.body)))
+  app.post(`${base}/desktop-policy`, endpoint(req => center.desktopPolicy(req.body)))
   app.post(`${base}/refresh`, endpoint(req => center.refresh(bearer(req))))
   app.post(`${base}/service-token`, endpoint(req => center.serviceToken(bearer(req), req.body.audience)))
   app.post(`${base}/introspect`, endpoint(req => center.introspect(bearer(req), req.body.audience)))

@@ -26,7 +26,7 @@ function audit(state, actor, event, id, at, detail = {}) { state.audit.push({ id
 const binding = (grant, instance, now) => grant.instanceId === instance || grant.previousBinding?.instanceId === instance && grant.previousBinding.expiresAt > now
 const usage = (state, grant, kind) => Number(grant.initialUsage?.[kind] || 0) + Object.values(state.resources).filter(r => r.grantId === grant.id && r.kind === kind).length
 
-export function createLicenseCenter({ store, privateKey, publicKeys, keyId, credentialKey, now = Date.now }) {
+export function createLicenseCenter({ store, privateKey, publicKeys, keyId, credentialKey, responseProofKeys = {}, now = Date.now }) {
   if (!privateKey || !publicKeys?.[keyId] || !credentialKey) throw new Error('Explicit signing and credential keys required')
   const signing = { privateKey, keyId }, derive = (hash, instance) => crypto.createHmac('sha256', credentialKey).update(`${hash}:${instance}`).digest('base64url')
   function authenticate(state, token) {
@@ -65,6 +65,22 @@ export function createLicenseCenter({ store, privateKey, publicKeys, keyId, cred
     return { ...claims, grant: publicGrant(grant), root: publicGrant(grant) }
   }
   return {
+    async desktopPolicy(input) {
+      const origin = domain(input.origin), nonce = String(input.nonce || '')
+      if (!/^[A-Za-z0-9_-]{43}$/.test(nonce)) throw failure('INVALID_CHALLENGE', '客户端校验挑战无效')
+      const state = await store.read()
+      const matches = Object.values(state.grants).flatMap(grant => {
+        if (grant.level !== 1 || grant.deletedAt || grant.status !== 'enabled' || !Number.isFinite(grant.activatedAt) || grant.expiresAt && Date.parse(grant.expiresAt) <= now()) return []
+        if (grant.domain === origin) return [grant]
+        if (grant.previousBinding?.domain === origin && grant.previousBinding.expiresAt > now()) return [{ ...grant, ...grant.previousBinding, bindingExpiresAt: grant.previousBinding.expiresAt }]
+        return []
+      })
+      if (matches.length !== 1) throw failure('LICENSE_INACTIVE', '部署域名未授权、授权已失效或绑定不唯一', 403)
+      const bound = matches[0], grant = state.grants[bound.id]
+      return { policy: signClaims({ aud: 'official-desktop', sub: grant.id, instanceId: bound.instanceId, origin, nonce,
+        version: grant.version, modelMode: grant.modelMode, responseProofKeys, iat: now(),
+        exp: Math.min(now() + 24 * HOUR, grant.expiresAt ? Date.parse(grant.expiresAt) : Infinity, bound.bindingExpiresAt || Infinity) }, signing) }
+    },
     async list() { const state = await store.read(); return { capabilityGroups: CAPABILITY_GROUPS, grants: Object.values(state.grants).filter(g => !g.deletedAt).map(g => ({ ...publicGrant(g), usage: Object.fromEntries(['projects', 'builds'].map(k => [k, usage(state, g, k)])) })), packages: currentPackages(state), audit: state.audit.slice(-200).reverse().map(row => presentAudit(row, state)), notices: Object.values(state.notices).slice(-200).reverse().map(n => ({ ...n, grantName: state.grants[n.grantId]?.name || '历史代理' })) } },
     publishPackage(input, actor) { return store.transaction(state => createPackage(state, input, actor, now, audit)) },
     updatePackage(id, input, actor) { return store.transaction(state => updatePackage(state, id, input, actor, now, audit)) },

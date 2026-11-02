@@ -182,3 +182,37 @@ test('signing key rotation uses the announced key id while retained old keys ver
   assert.throws(()=>verifyClaims(certificate,{keys:f.publicKeys,audience:'deployment',now:f.now}),{code:'INVALID_LICENSE'})
   assert.equal(verifyClaims(active.certificate,{keys:publicKeys,audience:'deployment',now:f.now}).id,'agent-a')
 })
+
+
+test('desktop policy is live, nonce bound, domain scoped and never includes credentials', async () => {
+  const f = fixture(), nonce = crypto.randomBytes(32).toString('base64url'), input = { origin: 'https://agent.example.test', nonce }
+  await assert.rejects(f.center.desktopPolicy(input), { code: 'LICENSE_INACTIVE' })
+  const issued = await f.issue(); const active = await f.activate(issued.code)
+  const { policy } = await f.center.desktopPolicy(input)
+  const claims = verifyClaims(policy, { keys: f.publicKeys, audience: 'official-desktop', now: f.now })
+  assert.equal(claims.nonce, nonce); assert.equal(claims.origin, input.origin); assert.equal(claims.modelMode, 'fixed')
+  assert(claims.exp <= f.now + 24 * HOUR); assert(!JSON.stringify(claims).includes(active.credential))
+  await assert.rejects(f.center.desktopPolicy({ ...input, nonce: 'bad' }), { code: 'INVALID_CHALLENGE' })
+  await assert.rejects(f.center.desktopPolicy({ ...input, origin: 'https://other.example.test' }), { code: 'LICENSE_INACTIVE' })
+  await f.update('agent-a', { expectedVersion: 1, modelMode: 'custom' })
+  assert.equal(verifyClaims((await f.center.desktopPolicy(input)).policy, { keys: f.publicKeys, audience: 'official-desktop', now: f.now }).modelMode, 'custom')
+  await f.update('agent-a', { expectedVersion: 2, status: 'suspended' })
+  await assert.rejects(f.center.desktopPolicy(input), { code: 'LICENSE_INACTIVE' })
+  await f.update('agent-a', { expectedVersion: 3, status: 'enabled' })
+  const other = await f.issue({ id: 'agent-b' }); await f.center.activate({ code: other.code, instanceId: 'instance-b', domain: input.origin, requestId: 'other' })
+  await assert.rejects(f.center.desktopPolicy(input), { code: 'LICENSE_INACTIVE' })
+})
+
+
+test('desktop policy follows renewal, migration overlap, expiry and revocation without trusting a backend cache', async () => {
+ const f=fixture(),nonce=crypto.randomBytes(32).toString('base64url'),input={origin:'https://agent.example.test',nonce}
+ const issued=await f.issue({expiresAt:new Date(f.now+HOUR).toISOString()});await f.activate(issued.code)
+ const first=verifyClaims((await f.center.desktopPolicy(input)).policy,{keys:f.publicKeys,audience:'official-desktop',now:f.now});assert.equal(first.exp,f.now+HOUR)
+ f.advance(HOUR);await assert.rejects(f.center.desktopPolicy(input),{code:'LICENSE_INACTIVE'})
+ await f.update('agent-a',{expectedVersion:1,expiresAt:new Date(f.now+7*24*HOUR).toISOString()})
+ await f.center.rotate('agent-a',{expectedVersion:2,instanceId:'instance-new',domain:'https://new.example.test',overlapHours:1},'operator')
+ const old=verifyClaims((await f.center.desktopPolicy(input)).policy,{keys:f.publicKeys,audience:'official-desktop',now:f.now});assert.equal(old.instanceId,'instance-a');assert.equal(old.exp,f.now+HOUR)
+ const changed={...input,origin:'https://new.example.test'};assert.equal(verifyClaims((await f.center.desktopPolicy(changed)).policy,{keys:f.publicKeys,audience:'official-desktop',now:f.now}).instanceId,'instance-new')
+ f.advance(HOUR);await assert.rejects(f.center.desktopPolicy(input),{code:'LICENSE_INACTIVE'})
+ await f.update('agent-a',{expectedVersion:3,status:'revoked'});await assert.rejects(f.center.desktopPolicy(changed),{code:'LICENSE_INACTIVE'})
+})
