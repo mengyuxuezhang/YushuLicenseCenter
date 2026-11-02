@@ -75,4 +75,6 @@ state套餐列表按id仅返回当前配置及grantCount；删除的套餐和授
 
 ## 官方客户端直接校验
 
+策略的iat与exp使用同一个签发时间快照，确保完整有效期不超过24小时；部署前核对中心与客户端时钟同步，不能通过放宽客户端时间校验解决时钟漂移。配套服务、客户端切换与回退见[YushuHub清单](https://github.com/mengyuxuezhang/YushuHub/blob/feat/client-license-verification/docs/CLIENT_LICENSE_ROLLOUT.md)。
+
 POST `/api/license-center/v1/desktop-policy`只接受HTTPS根`origin`及32随机字节base64url`nonce`；无需代理实例秘密，返回有限的公开签名策略，不含账号、Key、完整能力目录或运营资料。只对唯一正常且已激活的域名绑定发放aud=official-desktop的Ed25519策略，有效期最多24小时并受授权及迁移重叠期限约束。中心直接读取当前状态，代理不能用自己的签名或旧权限代替。固定文本响应公钥通过`AI_LICENSE_RESPONSE_PROOF_KEYS_FILE`配置，以kid→SPKI PEM JSON读取；不在中心保存New API响应私钥。完整跨仓协议、验证规则和上线顺序见[YushuHub协议](https://github.com/mengyuxuezhang/YushuHub/blob/feat/client-license-verification/docs/CLIENT_LICENSE_VERIFICATION.md)。当前是独立开发分支，未部署生产。

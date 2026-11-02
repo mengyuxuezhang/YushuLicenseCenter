@@ -6,10 +6,10 @@ import { createLicenseCenter, emptyCenterState } from './center.mjs'
 import { createDeploymentClient, emptyDeploymentState } from './deployment-client.mjs'
 import { verifyClaims, HOUR } from './protocol.mjs'
 
-function fixture() {
+function fixture(tickMs = 0) {
   let timestamp = Date.UTC(2026, 10, 1), offline = false
   const pair = crypto.generateKeyPairSync('ed25519'), publicKeys = { test: pair.publicKey }, store = memoryStateStore(emptyCenterState())
-  const center = createLicenseCenter({ store, privateKey: pair.privateKey, publicKeys, keyId: 'test', credentialKey: crypto.randomBytes(48), now: () => timestamp })
+  const center = createLicenseCenter({ store, privateKey: pair.privateKey, publicKeys, keyId: 'test', credentialKey: crypto.randomBytes(48), now: () => { const result = timestamp; timestamp += tickMs; return result } })
   const issue = (input = {}) => center.issue({ id: 'agent-a', name: '虚构代理', packageId: 'standard', modelMode: 'fixed', domain: 'https://agent.example.test', expiresAt: new Date(timestamp + 7 * 24 * HOUR).toISOString(), ...input }, 'test-operator')
   const activate = code => center.activate({ code, instanceId: 'instance-a', domain: 'https://agent.example.test', requestId: 'activation-a' })
   const update = async (id, patch) => center.update(id, { ...patch, previewDigest: (await center.preview(id, patch)).previewDigest }, 'test-operator')
@@ -203,6 +203,13 @@ test('desktop policy is live, nonce bound, domain scoped and never includes cred
   await assert.rejects(f.center.desktopPolicy(input), { code: 'LICENSE_INACTIVE' })
 })
 
+
+test('desktop policy stays within the client lifetime limit while the clock advances during signing', async () => {
+ const f=fixture(1),issued=await f.issue();await f.activate(issued.code)
+ const input={origin:'https://agent.example.test',nonce:crypto.randomBytes(32).toString('base64url')}
+ const claims=verifyClaims((await f.center.desktopPolicy(input)).policy,{keys:f.publicKeys,audience:'official-desktop',now:f.now})
+ assert.equal(claims.exp-claims.iat,24*HOUR)
+})
 
 test('desktop policy follows renewal, migration overlap, expiry and revocation without trusting a backend cache', async () => {
  const f=fixture(),nonce=crypto.randomBytes(32).toString('base64url'),input={origin:'https://agent.example.test',nonce}

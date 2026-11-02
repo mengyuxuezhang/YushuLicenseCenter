@@ -68,7 +68,7 @@ export function createLicenseCenter({ store, privateKey, publicKeys, keyId, cred
     async desktopPolicy(input) {
       const origin = domain(input.origin), nonce = String(input.nonce || '')
       if (!/^[A-Za-z0-9_-]{43}$/.test(nonce)) throw failure('INVALID_CHALLENGE', '客户端校验挑战无效')
-      const state = await store.read()
+      const state = await store.read(), issuedAt = now()
       const matches = Object.values(state.grants).flatMap(grant => {
         if (grant.level !== 1 || grant.deletedAt || grant.status !== 'enabled' || !Number.isFinite(grant.activatedAt) || grant.expiresAt && Date.parse(grant.expiresAt) <= now()) return []
         if (grant.domain === origin) return [grant]
@@ -78,8 +78,8 @@ export function createLicenseCenter({ store, privateKey, publicKeys, keyId, cred
       if (matches.length !== 1) throw failure('LICENSE_INACTIVE', '部署域名未授权、授权已失效或绑定不唯一', 403)
       const bound = matches[0], grant = state.grants[bound.id]
       return { policy: signClaims({ aud: 'official-desktop', sub: grant.id, instanceId: bound.instanceId, origin, nonce,
-        version: grant.version, modelMode: grant.modelMode, responseProofKeys, iat: now(),
-        exp: Math.min(now() + 24 * HOUR, grant.expiresAt ? Date.parse(grant.expiresAt) : Infinity, bound.bindingExpiresAt || Infinity) }, signing) }
+        version: grant.version, modelMode: grant.modelMode, responseProofKeys, iat: issuedAt,
+        exp: Math.min(issuedAt + 24 * HOUR, grant.expiresAt ? Date.parse(grant.expiresAt) : Infinity, bound.bindingExpiresAt || Infinity) }, signing) }
     },
     async list() { const state = await store.read(); return { capabilityGroups: CAPABILITY_GROUPS, grants: Object.values(state.grants).filter(g => !g.deletedAt).map(g => ({ ...publicGrant(g), usage: Object.fromEntries(['projects', 'builds'].map(k => [k, usage(state, g, k)])) })), packages: currentPackages(state), audit: state.audit.slice(-200).reverse().map(row => presentAudit(row, state)), notices: Object.values(state.notices).slice(-200).reverse().map(n => ({ ...n, grantName: state.grants[n.grantId]?.name || '历史代理' })) } },
     publishPackage(input, actor) { return store.transaction(state => createPackage(state, input, actor, now, audit)) },
