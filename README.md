@@ -4,6 +4,8 @@
 
 本仓库公开源码，沿用源项目的[现有许可证](LICENSE)和[商业授权说明](COMMERCIAL_LICENSE.md)，公开不等于无条件商业使用。当前为拆分开发版本，未发布正式生产更新。
 
+接手请读[验证与迁移状态](docs/STATUS.md)，跨项目导航在[project-hub](https://github.com/mengyuxuezhang/project-hub)。
+
 ## 功能
 
 - 一次性激活码、Ed25519签名、绑定、续期、停用、撤销、迁移和累计额度。
