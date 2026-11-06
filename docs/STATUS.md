@@ -33,3 +33,7 @@
 正式登录显式配置 `AI_LICENSE_OPERATOR_LOGIN_MODE=captcha`，无需TOTP。响应公钥与实际New API私钥配对验证通过；密钥、数据库配置和原始证据只在服务器受控目录，Web目录不保存连接密码。
 
 配套后台1.9.60试点、New API可选签名已启用。原构建/资源服务的历史组织分级已由负责人确认并完成保留数据的接入，试点历史构建与资源目录访问通过；官方客户端安装包及更新源尚未发布，不能描述为全量上线完成。部署和兼容回退详见配套[切换清单](https://github.com/mengyuxuezhang/YushuHub/blob/feat/client-license-verification/docs/CLIENT_LICENSE_ROLLOUT.md)。
+
+## 2026-11-06 统一接入正式发布
+
+授权中心0.2.0已合入main、发布不可变标签并上线，配套YushuHub1.9.66完成官方部署和更新源交付。支持复制完整接入信息、代理商粘贴激活；现有数据库、账号、密钥及存量授权保持。详见[0.2.0发布记录](RELEASE_0.2.0.md)及[接入说明](AUTHORIZATION_ONBOARDING.md)。
