@@ -78,3 +78,11 @@ state套餐列表按id仅返回当前配置及grantCount；删除的套餐和授
 策略的iat与exp使用同一个签发时间快照，确保完整有效期不超过24小时；部署前核对中心与客户端时钟同步，不能通过放宽客户端时间校验解决时钟漂移。配套服务、客户端切换与回退见[YushuHub清单](https://github.com/mengyuxuezhang/YushuHub/blob/feat/client-license-verification/docs/CLIENT_LICENSE_ROLLOUT.md)。
 
 POST `/api/license-center/v1/desktop-policy`只接受HTTPS根`origin`及32随机字节base64url`nonce`；无需代理实例秘密，返回有限的公开签名策略，不含账号、Key、完整能力目录或运营资料。只对唯一正常且已激活的域名绑定发放aud=official-desktop的Ed25519策略，有效期最多24小时并受授权及迁移重叠期限约束。中心直接读取当前状态，代理不能用自己的签名或旧权限代替。固定文本响应公钥通过`AI_LICENSE_RESPONSE_PROOF_KEYS_FILE`配置，以kid→SPKI PEM JSON读取；不在中心保存New API响应私钥。完整跨仓协议、验证规则和上线顺序见[YushuHub协议](https://github.com/mengyuxuezhang/YushuHub/blob/feat/client-license-verification/docs/CLIENT_LICENSE_VERIFICATION.md)。当前是独立开发分支，未部署生产。
+
+## 失效授权恢复
+
+公钥发现接口 `GET /onboarding-keys` 增加 `authorizationRecovery:1` 能力声明。激活请求可选 `previousBinding:{grantId,credential,instanceId,domain}`，由经营后台从服务端旧实例状态读取；不在浏览器接收或返回旧运行凭据。
+
+中心核对新码、旧凭据和同一部署，原授权须失效且未被其他授权接续。激活事务同时转接原额度登记，保留预占ID，撤销旧凭据并标记原授权后继。证书和受信任内省的grant增加 `businessId`（原业务身份）及 `previousLicenseIds`（历史授权链）。这两个字段只能由中心的恢复事务产生，签发输入不可指定。
+
+官方业务服务须从可信中心内省读取businessId，继续应用既有历史身份映射；客户端提交的businessId不可信。不能仅在管理端页面放开输入框，或仅在客户端删除旧rootId来完成恢复。配套接入与升级顺序见[统一接入说明](AUTHORIZATION_ONBOARDING.md)。

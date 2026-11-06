@@ -1,3 +1,4 @@
+import { recoverAuthorization } from './recovery.mjs'
 import { createOnboardingDelivery } from './onboarding-delivery.mjs'
 import crypto from 'node:crypto'
 import { createPackage, updatePackage, deletePackage, latestPackage, currentPackages } from './package-management.mjs'
@@ -130,6 +131,7 @@ export function createLicenseCenter({ store, privateKey, publicKeys, keyId, cred
       if (code.expectedInstanceId && code.expectedInstanceId !== instanceId) throw failure('BINDING_MISMATCH', '接入信息与实例不符', 403)
       if (grant.domain !== origin || code.status === 'used' && (code.requestId !== requestId || grant.instanceId !== instanceId)
         || code.status === 'unused' && Number.isFinite(grant.activatedAt)) throw failure('BINDING_MISMATCH', '激活码或部署绑定不匹配', 403)
+      if (code.status === 'unused' && input.previousBinding) { const sourceId = recoverAuthorization(state, grant, input.previousBinding, now()); audit(state, grant.id, 'grant_recovered', grant.id, now(), { previousLicenseId: sourceId }) }
       const credential = derive(hash, instanceId)
       if (code.status === 'unused') { code.status = 'used'; code.requestId = requestId; code.usedAt = now(); Object.assign(grant, { instanceId, activatedAt: now(), credentialHash: digest(credential) }); state.credentials[grant.credentialHash] = grant.id; audit(state, grant.id, 'activated', grant.id, now()) }
       if (!equal(grant.credentialHash, digest(credential))) throw failure('BINDING_MISMATCH', '凭据已轮换', 403)

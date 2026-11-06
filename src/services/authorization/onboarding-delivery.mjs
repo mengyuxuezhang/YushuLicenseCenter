@@ -4,7 +4,7 @@ import { domain, digest, failure, secret, signClaims } from './protocol.mjs'
 export function createOnboardingDelivery({ store, signing, publicKeys, centerUrl, now, audit }) {
   publicKeys = Object.fromEntries(Object.entries(publicKeys).map(([id, key]) => [id, typeof key === 'string' ? key : key.export({ type: 'spki', format: 'pem' })]))
   return {
-    publicKeys() { return { centerUrl: domain(centerUrl), publicKeys } },
+    publicKeys() { return { centerUrl: domain(centerUrl), publicKeys, authorizationRecovery: 1 } },
     issue(id, actor) { return store.transaction(state => {
       const grant = state.grants[id]
       if (!grant || grant.deletedAt || grant.status !== 'enabled' || grant.expiresAt && Date.parse(grant.expiresAt) <= now()) throw failure('LICENSE_INACTIVE', '授权不可用于接入', 403)
