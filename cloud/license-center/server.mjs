@@ -16,7 +16,7 @@ if (process.argv.includes('--migrate')) { try { await store.migrate(); console.l
 else {
   await store.read()
   const read = file => fs.readFile(file, 'utf8'), json = async file => JSON.parse(await read(file))
-  const center = createLicenseCenter({ store, privateKey: await read(process.env.AI_LICENSE_PRIVATE_KEY_FILE), keyId: process.env.AI_LICENSE_KEY_ID, publicKeys: await json(process.env.AI_LICENSE_PUBLIC_KEYS_FILE), credentialKey: await read(process.env.AI_LICENSE_CREDENTIAL_KEY_FILE), responseProofKeys: process.env.AI_LICENSE_RESPONSE_PROOF_KEYS_FILE ? await json(process.env.AI_LICENSE_RESPONSE_PROOF_KEYS_FILE) : {} })
+  const center = createLicenseCenter({ store, privateKey: await read(process.env.AI_LICENSE_PRIVATE_KEY_FILE), keyId: process.env.AI_LICENSE_KEY_ID, publicKeys: await json(process.env.AI_LICENSE_PUBLIC_KEYS_FILE), credentialKey: await read(process.env.AI_LICENSE_CREDENTIAL_KEY_FILE), centerUrl: process.env.AI_LICENSE_PUBLIC_URL || 'https://license.okpa.cn', responseProofKeys: process.env.AI_LICENSE_RESPONSE_PROOF_KEYS_FILE ? await json(process.env.AI_LICENSE_RESPONSE_PROOF_KEYS_FILE) : {} })
   const operators = createOperatorAuth({ store, operators: await json(process.env.AI_LICENSE_OPERATORS_FILE), loginMode: process.env.AI_LICENSE_OPERATOR_LOGIN_MODE || 'totp' })
   await operators.initialize()
   const app = express(); app.disable('x-powered-by'); app.use(express.json({ limit: '256kb' })); app.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"); next() })

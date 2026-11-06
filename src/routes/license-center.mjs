@@ -2,6 +2,7 @@ export const bearer = req => String(req.headers.authorization || '').replace(/^B
 export const endpoint = operation => async (req, res, next) => { try { res.json({ success: true, data: await operation(req) }) } catch (e) { next(e) } }
 export function registerLicenseCenterRoutes(app, { center, operators }) {
   const base = '/api/license-center/v1'
+  app.get(`${base}/onboarding-keys`, endpoint(() => center.onboardingKeys()))
   app.get(`${base}/operator/login-challenge`, endpoint(req => operators.challenge(req.ip)))
   app.post(`${base}/operator/login`, endpoint(req => operators.login(req.body, req.ip)))
   app.use(`${base}/operator`, async (req, _res, next) => { try { req.operator = await operators.authenticate(bearer(req)); next() } catch (e) { next(e) } })
@@ -15,6 +16,7 @@ export function registerLicenseCenterRoutes(app, { center, operators }) {
   app.post(`${base}/operator/packages`, endpoint(req => center.publishPackage(req.body, req.operator)))
   app.patch(`${base}/operator/packages/:id`, endpoint(req => center.updatePackage(req.params.id, req.body, req.operator)))
   app.delete(`${base}/operator/packages/:id`, endpoint(req => center.deletePackage(req.params.id, req.body, req.operator)))
+  app.post(`${base}/operator/grants/:id/onboarding`, endpoint(req => center.onboardingInfo(req.params.id, req.operator)))
   app.post(`${base}/operator/grants`, endpoint(req => center.issue(req.body, req.operator)))
   app.post(`${base}/operator/grants/:id/preview`, endpoint(req => center.preview(req.params.id, req.body)))
   app.patch(`${base}/operator/grants/:id`, endpoint(req => center.update(req.params.id, req.body, req.operator)))

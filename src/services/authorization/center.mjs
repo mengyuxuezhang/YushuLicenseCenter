@@ -1,3 +1,4 @@
+import { createOnboardingDelivery } from './onboarding-delivery.mjs'
 import crypto from 'node:crypto'
 import { createPackage, updatePackage, deletePackage, latestPackage, currentPackages } from './package-management.mjs'
 import { presentAudit } from './audit-presentation.mjs'
@@ -26,7 +27,7 @@ function audit(state, actor, event, id, at, detail = {}) { state.audit.push({ id
 const binding = (grant, instance, now) => grant.instanceId === instance || grant.previousBinding?.instanceId === instance && grant.previousBinding.expiresAt > now
 const usage = (state, grant, kind) => Number(grant.initialUsage?.[kind] || 0) + Object.values(state.resources).filter(r => r.grantId === grant.id && r.kind === kind).length
 
-export function createLicenseCenter({ store, privateKey, publicKeys, keyId, credentialKey, responseProofKeys = {}, now = Date.now }) {
+export function createLicenseCenter({ store, privateKey, publicKeys, keyId, credentialKey, responseProofKeys = {}, centerUrl = 'https://license.okpa.cn', now = Date.now }) {
   if (!privateKey || !publicKeys?.[keyId] || !credentialKey) throw new Error('Explicit signing and credential keys required')
   const signing = { privateKey, keyId }, derive = (hash, instance) => crypto.createHmac('sha256', credentialKey).update(`${hash}:${instance}`).digest('base64url')
   function authenticate(state, token) {
@@ -64,7 +65,10 @@ export function createLicenseCenter({ store, privateKey, publicKeys, keyId, cred
     if (!Number.isFinite(grant.activatedAt) || claims.version !== grant.version || claims.rootId !== grant.id || !binding(grant, claims.instanceId, now())) throw failure('STALE_LICENSE', '授权版本或实例已变更', 403)
     return { ...claims, grant: publicGrant(grant), root: publicGrant(grant) }
   }
+  const delivery = createOnboardingDelivery({ store, signing, publicKeys, centerUrl, now, audit })
   return {
+    onboardingInfo: delivery.issue,
+    onboardingKeys: delivery.publicKeys,
     async desktopPolicy(input) {
       const origin = domain(input.origin), nonce = String(input.nonce || '')
       if (!/^[A-Za-z0-9_-]{43}$/.test(nonce)) throw failure('INVALID_CHALLENGE', '客户端校验挑战无效')
@@ -123,6 +127,7 @@ export function createLicenseCenter({ store, privateKey, publicKeys, keyId, cred
       const hash = digest(input.code || ''), code = state.codes[hash]
       if (!code || !['unused', 'used'].includes(code.status) || code.status === 'unused' && code.expiresAt <= now()) throw failure('INVALID_CODE', '激活码不存在、过期或作废', 403)
       const grant = current(state, code.grantId, now())
+      if (code.expectedInstanceId && code.expectedInstanceId !== instanceId) throw failure('BINDING_MISMATCH', '接入信息与实例不符', 403)
       if (grant.domain !== origin || code.status === 'used' && (code.requestId !== requestId || grant.instanceId !== instanceId)
         || code.status === 'unused' && Number.isFinite(grant.activatedAt)) throw failure('BINDING_MISMATCH', '激活码或部署绑定不匹配', 403)
       const credential = derive(hash, instanceId)
