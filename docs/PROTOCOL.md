@@ -86,3 +86,14 @@ POST `/api/license-center/v1/desktop-policy`只接受HTTPS根`origin`及32随机
 中心核对新码、旧凭据和同一部署，原授权须失效且未被其他授权接续。激活事务同时转接原额度登记，保留预占ID，撤销旧凭据并标记原授权后继。证书和受信任内省的grant增加 `businessId`（原业务身份）及 `previousLicenseIds`（历史授权链）。这两个字段只能由中心的恢复事务产生，签发输入不可指定。
 
 官方业务服务须从可信中心内省读取businessId，继续应用既有历史身份映射；客户端提交的businessId不可信。不能仅在管理端页面放开输入框，或仅在客户端删除旧rootId来完成恢复。配套接入与升级顺序见[统一接入说明](AUTHORIZATION_ONBOARDING.md)。
+
+
+## 专用受限渠道摘要 v1（默认关闭）
+
+POST `/api/license-center/v1/partner/summary`，配置AI_LICENSE_PARTNER_SUMMARY_ENABLED=true及独立AI_LICENSE_PARTNER_SUMMARY_SECRET（至少32字节）后才可用。默认503；不能共享operator会话、实例凭据或签名私钥。真实部署与生产启用另行安排。
+
+请求头X-Partner-Source固定partner-center；X-Partner-Time为Unix毫秒（±5分钟）；X-Partner-Nonce为16–80位字母数字下划线或短横线；X-Partner-Signature为HMAC-SHA256小写hex。签名输入以换行连接v1、source、POST、精确路径、原时间戳、nonce、原UTF8正文SHA256hex，无末尾换行。nonce持久保存10分钟，重复409。
+
+正文`{grantIds:["稳定授权编号"]}`，最多100项。返回data数组，仅id/name/status/modelMode/expiresAt/packageName，过期状态expired；未知编号省略。不返回域名、激活码、凭据、签名、资源、管理员资料或其他授权。接口无写业务权限，只有防重放记录在自身事务落库，不修改授权事实。调用方必须先按其业务角色验证客户与编号范围。
+
+无需重置授权中心数据库，首次使用防重放数组在现有聚合状态兼容新增。回退先关闭开关，保留数据库与防重放记录；不轮换或复制授权签名私钥。本变更没有生产启用。

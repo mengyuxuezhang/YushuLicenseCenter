@@ -1,3 +1,4 @@
+import { registerPartnerSummary } from '../../src/services/authorization/partner-summary.mjs'
 import fs from 'node:fs/promises'
 import express from 'express'
 import mysql from 'mysql2/promise'
@@ -19,9 +20,10 @@ else {
   const center = createLicenseCenter({ store, privateKey: await read(process.env.AI_LICENSE_PRIVATE_KEY_FILE), keyId: process.env.AI_LICENSE_KEY_ID, publicKeys: await json(process.env.AI_LICENSE_PUBLIC_KEYS_FILE), credentialKey: await read(process.env.AI_LICENSE_CREDENTIAL_KEY_FILE), centerUrl: process.env.AI_LICENSE_PUBLIC_URL || 'https://license.okpa.cn', responseProofKeys: process.env.AI_LICENSE_RESPONSE_PROOF_KEYS_FILE ? await json(process.env.AI_LICENSE_RESPONSE_PROOF_KEYS_FILE) : {} })
   const operators = createOperatorAuth({ store, operators: await json(process.env.AI_LICENSE_OPERATORS_FILE), loginMode: process.env.AI_LICENSE_OPERATOR_LOGIN_MODE || 'totp' })
   await operators.initialize()
-  const app = express(); app.disable('x-powered-by'); app.use(express.json({ limit: '256kb' })); app.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"); next() })
+  const app = express(); app.disable('x-powered-by'); app.use(express.json({ limit: '256kb', verify(req,_res,bytes){req.rawBody=bytes.toString('utf8')} })); app.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"); next() })
   app.get('/health', (_req, res) => res.json({ success: true, data: { service: 'single-agent-license-center' } }))
   registerLicenseCenterRoutes(app, { center, operators })
+  registerPartnerSummary(app,{store,enabled:process.env.AI_LICENSE_PARTNER_SUMMARY_ENABLED==='true',secret:process.env.AI_LICENSE_PARTNER_SUMMARY_SECRET})
   app.use('/license-center', express.static(fileURLToPath(new URL('../../web/license-center', import.meta.url))))
   app.use((error, _req, res, _next) => { const status = error.statusCode || error.status || 500; res.status(status).json({ success: false, code: error.code || 'SERVICE_ERROR', error: status < 500 ? error.message : '授权服务暂不可用' }) })
   const dispatchReminders = createReminderDispatcher({ center, store, targetFile: process.env.AI_LICENSE_WEBHOOK_FILE })
