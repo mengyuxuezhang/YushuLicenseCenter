@@ -1,6 +1,6 @@
 {
   "name": "yushu-license-center",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "羽枢独立授权中心：代理授权、套餐、部署绑定与运营账号管理",
   "type": "module",
